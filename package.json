@@ -1,0 +1,11 @@
+{
+  "name": "orpheus-theme-template",
+  "version": "1.0.0",
+  "description": "Template for creating Orpheus themes",
+  "author": "Your Name",
+  "license": "MIT",
+  "orpheus": {
+    "displayName": "My Theme",
+    "author": "Your Name"
+  }
+}
