@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
 
   <style>
     html,
@@ -38,26 +38,65 @@
   <script>
     const nowPlaying = document.getElementById('now-playing');
 
+    let lastPlayingUpdate = 0;
+
+    // How long we'll trust the last "playing" event.
+    const PLAYING_TIMEOUT = 5000;
+
+    function showNothingPlaying() {
+      nowPlaying.textContent = '♪ Nothing is playing ♪';
+    }
+
+    function showTrack(track) {
+      nowPlaying.textContent =
+        `♪ ${track.title || 'Unknown'} - ${track.artist || 'Unknown'} ♪`;
+    }
+
+    // Connect to SSE stream
     const eventSource = new EventSource('/api/stream');
 
     eventSource.addEventListener('track', (event) => {
-      const track = JSON.parse(event.data);
+      try {
+        const track = JSON.parse(event.data);
 
-      console.log('TRACK EVENT:', track);
-      console.log('playing:', track.playing);
-      console.log('title:', track.title);
-      console.log('artist:', track.artist);
+        console.log('Track event:', track);
 
-      if (track.playing === false) {
-        nowPlaying.textContent = '♪ Nothing is playing ♪';
-        return;
-      }
+        // Explicitly stopped / paused
+        if (track.playing === false) {
+          lastPlayingUpdate = 0;
+          showNothingPlaying();
+          return;
+        }
 
-      if (track.playing === true) {
-        nowPlaying.textContent =
-          `♪ ${track.title} - ${track.artist} ♪`;
+        // Valid playing state
+        if (track.playing === true) {
+          lastPlayingUpdate = Date.now();
+          showTrack(track);
+          return;
+        }
+
+        // Bad / empty event
+        lastPlayingUpdate = 0;
+        showNothingPlaying();
+
+      } catch (error) {
+        console.error('Invalid track event:', error);
+        lastPlayingUpdate = 0;
+        showNothingPlaying();
       }
     });
+
+    // If Orpheus stops sending fresh playing events,
+    // assume playback stopped.
+    setInterval(() => {
+      if (
+        lastPlayingUpdate !== 0 &&
+        Date.now() - lastPlayingUpdate > PLAYING_TIMEOUT
+      ) {
+        lastPlayingUpdate = 0;
+        showNothingPlaying();
+      }
+    }, 1000);
   </script>
 
 </body>
