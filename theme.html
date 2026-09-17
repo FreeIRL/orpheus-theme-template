@@ -33,18 +33,13 @@
 
 <body>
 
-  <div id="now-playing">♪ Nothing is playing ♪</div>
+  <div id="now-playing"></div>
 
   <script>
     const nowPlaying = document.getElementById('now-playing');
 
-    function showNothingPlaying() {
-      nowPlaying.textContent = '♪ Nothing is playing ♪';
-    }
-
     function showTrack(track) {
       if (!track || !track.title || !track.artist) {
-        showNothingPlaying();
         return;
       }
 
@@ -52,55 +47,33 @@
         `♪ ${track.title} - ${track.artist} ♪`;
     }
 
-
-    // -----------------------------------------
-    // SSE — instant track updates
-    // -----------------------------------------
-
+    // SSE — instant updates
     const eventSource = new EventSource('/api/stream');
 
     eventSource.addEventListener('track', (event) => {
       try {
         const track = JSON.parse(event.data);
 
-        console.log('SSE track:', track);
-
-        if (track.playing === false) {
-          showNothingPlaying();
-          return;
-        }
-
         if (track.playing === true) {
           showTrack(track);
         }
-
       } catch (error) {
         console.error('SSE parse error:', error);
       }
     });
 
-
-    // -----------------------------------------
-    // Poll current state
-    // -----------------------------------------
-
+    // Poll current track state
     async function checkCurrentTrack() {
       try {
-        const response = await fetch(
-          '/api/now-playing',
-          {
-            cache: 'no-store'
-          }
-        );
+        const response = await fetch('/api/now-playing', {
+          cache: 'no-store'
+        });
 
         if (!response.ok) {
-          showNothingPlaying();
           return;
         }
 
         const track = await response.json();
-
-        console.log('Current track:', track);
 
         if (
           track &&
@@ -109,23 +82,16 @@
           track.artist
         ) {
           showTrack(track);
-        } else {
-          showNothingPlaying();
         }
 
       } catch (error) {
         console.error('Current track check failed:', error);
-        showNothingPlaying();
       }
     }
 
-
-    // Check immediately
     checkCurrentTrack();
 
-    // Check every 2 seconds
     setInterval(checkCurrentTrack, 2000);
-
   </script>
 
 </body>
