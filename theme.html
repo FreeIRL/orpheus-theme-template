@@ -38,65 +38,94 @@
   <script>
     const nowPlaying = document.getElementById('now-playing');
 
-    let lastPlayingUpdate = 0;
-
-    // How long we'll trust the last "playing" event.
-    const PLAYING_TIMEOUT = 5000;
-
     function showNothingPlaying() {
       nowPlaying.textContent = '♪ Nothing is playing ♪';
     }
 
     function showTrack(track) {
+      if (!track || !track.title || !track.artist) {
+        showNothingPlaying();
+        return;
+      }
+
       nowPlaying.textContent =
-        `♪ ${track.title || 'Unknown'} - ${track.artist || 'Unknown'} ♪`;
+        `♪ ${track.title} - ${track.artist} ♪`;
     }
 
-    // Connect to SSE stream
+
+    // -----------------------------------------
+    // SSE — instant track updates
+    // -----------------------------------------
+
     const eventSource = new EventSource('/api/stream');
 
     eventSource.addEventListener('track', (event) => {
       try {
         const track = JSON.parse(event.data);
 
-        console.log('Track event:', track);
+        console.log('SSE track:', track);
 
-        // Explicitly stopped / paused
         if (track.playing === false) {
-          lastPlayingUpdate = 0;
           showNothingPlaying();
           return;
         }
 
-        // Valid playing state
         if (track.playing === true) {
-          lastPlayingUpdate = Date.now();
           showTrack(track);
-          return;
         }
 
-        // Bad / empty event
-        lastPlayingUpdate = 0;
-        showNothingPlaying();
-
       } catch (error) {
-        console.error('Invalid track event:', error);
-        lastPlayingUpdate = 0;
-        showNothingPlaying();
+        console.error('SSE parse error:', error);
       }
     });
 
-    // If Orpheus stops sending fresh playing events,
-    // assume playback stopped.
-    setInterval(() => {
-      if (
-        lastPlayingUpdate !== 0 &&
-        Date.now() - lastPlayingUpdate > PLAYING_TIMEOUT
-      ) {
-        lastPlayingUpdate = 0;
+
+    // -----------------------------------------
+    // Poll current state
+    // -----------------------------------------
+
+    async function checkCurrentTrack() {
+      try {
+        const response = await fetch(
+          '/api/now-playing',
+          {
+            cache: 'no-store'
+          }
+        );
+
+        if (!response.ok) {
+          showNothingPlaying();
+          return;
+        }
+
+        const track = await response.json();
+
+        console.log('Current track:', track);
+
+        if (
+          track &&
+          track.playing === true &&
+          track.title &&
+          track.artist
+        ) {
+          showTrack(track);
+        } else {
+          showNothingPlaying();
+        }
+
+      } catch (error) {
+        console.error('Current track check failed:', error);
         showNothingPlaying();
       }
-    }, 1000);
+    }
+
+
+    // Check immediately
+    checkCurrentTrack();
+
+    // Check every 2 seconds
+    setInterval(checkCurrentTrack, 2000);
+
   </script>
 
 </body>
