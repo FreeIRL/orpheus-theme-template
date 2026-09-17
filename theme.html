@@ -1,50 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Now Playing</title>
+  <meta charset="UTF-8">
 
   <style>
     html,
     body {
       margin: 0;
       padding: 0;
+      width: 100%;
+      height: 100%;
       background: transparent;
       overflow: hidden;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
     }
 
     #now-playing {
       font-family: "FOT-RodinNTLG Pro DB", sans-serif;
       font-size: 28px;
-      color: white;
+      color: rgb(126 121 143);
+      width: 100%;
+      text-align: center;
       white-space: nowrap;
     }
   </style>
 </head>
 
 <body>
-  <div id="now-playing">♪ Nothing playing ♪</div>
+
+  <div id="now-playing">♪ Nothing is playing ♪</div>
 
   <script>
-    const nowPlaying = document.getElementById('now-playing');
-
+    // Connect to SSE stream
     const eventSource = new EventSource('/api/stream');
+
+    const nowPlaying = document.getElementById('now-playing');
 
     eventSource.addEventListener('track', (event) => {
       const track = JSON.parse(event.data);
 
-      if (!track.playing) {
-        nowPlaying.textContent = '♪ Nothing playing ♪';
-        return;
-      }
+      // track.title    - Song title
+      // track.artist   - Artist name
+      // track.album    - Album name (optional)
+      // track.coverUrl - Album artwork URL (optional)
+      // track.playing  - Boolean, true if playing
 
-      nowPlaying.textContent = `♪ ${track.title} - ${track.artist} ♪`;
+      if (track.playing && track.title && track.artist) {
+        nowPlaying.textContent = `♪ ${track.title} - ${track.artist} ♪`;
+      } else {
+        nowPlaying.textContent = '♪ Nothing is playing ♪';
+      }
     });
 
     eventSource.onerror = () => {
-      nowPlaying.textContent = '♪ Nothing playing ♪';
+      nowPlaying.textContent = '♪ Nothing is playing ♪';
     };
   </script>
+
 </body>
 </html>
