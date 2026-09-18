@@ -22,11 +22,40 @@
 
     #now-playing {
       width: 100%;
+
       font-family: "FOT-RodinNTLG Pro DB", sans-serif;
       font-size: 28px;
       color: rgb(126 121 143);
+
       text-align: center;
       white-space: nowrap;
+
+      transform: translateY(0);
+    }
+
+    #now-playing.song-change {
+      animation: songBounce 500ms ease-out;
+    }
+
+    @keyframes songBounce {
+      0% {
+        transform: translateY(0);
+      }
+
+      /* Move down */
+      35% {
+        transform: translateY(10px);
+      }
+
+      /* Bounce upward */
+      65% {
+        transform: translateY(-4px);
+      }
+
+      /* Settle */
+      100% {
+        transform: translateY(0);
+      }
     }
   </style>
 </head>
@@ -38,16 +67,38 @@
   <script>
     const nowPlaying = document.getElementById('now-playing');
 
+    let currentTrackKey = '';
+
     function showTrack(track) {
       if (!track || !track.title || !track.artist) {
         return;
       }
 
-      nowPlaying.textContent =
-        `♪  ${track.title} - ${track.artist}  ♪`;
+      const newTrackKey =
+        `${track.title}|||${track.artist}`;
+
+      // Only animate when the actual song changes
+      if (newTrackKey !== currentTrackKey) {
+        currentTrackKey = newTrackKey;
+
+        nowPlaying.textContent =
+          `♪ ${track.title} - ${track.artist} ♪`;
+
+        // Restart animation
+        nowPlaying.classList.remove('song-change');
+
+        // Force browser to reset the animation
+        void nowPlaying.offsetWidth;
+
+        nowPlaying.classList.add('song-change');
+      }
     }
 
-    // SSE — instant updates
+
+    // ==============================
+    // SSE — instant song changes
+    // ==============================
+
     const eventSource = new EventSource('/api/stream');
 
     eventSource.addEventListener('track', (event) => {
@@ -57,12 +108,17 @@
         if (track.playing === true) {
           showTrack(track);
         }
+
       } catch (error) {
         console.error('SSE parse error:', error);
       }
     });
 
-    // Poll current track state
+
+    // ==============================
+    // Poll current track
+    // ==============================
+
     async function checkCurrentTrack() {
       try {
         const response = await fetch('/api/now-playing', {
@@ -85,7 +141,10 @@
         }
 
       } catch (error) {
-        console.error('Current track check failed:', error);
+        console.error(
+          'Current track check failed:',
+          error
+        );
       }
     }
 
